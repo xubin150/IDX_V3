@@ -1,0 +1,14 @@
+../Core/Src/hal.c:36:6:delay_ms	16	static
+../Core/Src/hal.c:46:6:delay_us	24	static,ignoring_inline_asm
+../Core/Src/hal.c:67:8:sendI2CData	32	static
+../Core/Src/hal.c:84:8:receiveI2CData	32	static
+../Core/Src/hal.c:101:8:sendI2CRegPointer	24	static
+../Core/Src/hal.c:118:8:receiveI2CDataNoWrite	32	static
+../Core/Src/hal.c:144:6:InitADC	8	static
+../Core/Src/hal.c:145:6:InitGPIO	8	static
+../Core/Src/hal.c:146:6:InitI2C	8	static
+../Core/Src/hal.c:151:6:getALERTinterruptStatus	8	static
+../Core/Src/hal.c:158:6:setALERTinterruptStatus	16	static
+../Core/Src/hal.c:166:6:GPIO_ALERT_IRQHandler	16	static
+../Core/Src/hal.c:174:6:enableALERTinterrupt	16	static
+../Core/Src/hal.c:181:6:waitForALERTinterrupt	16	static

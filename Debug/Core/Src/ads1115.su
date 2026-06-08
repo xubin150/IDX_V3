@@ -1,0 +1,8 @@
+../Core/Src/ads1115.c:29:6:adcStartup	8	static
+../Core/Src/ads1115.c:49:9:readChannelData	32	static
+../Core/Src/ads1115.c:104:6:writeSingleRegister	32	static
+../Core/Src/ads1115.c:129:6:writeSingleRegisterNoRead	24	static
+../Core/Src/ads1115.c:146:10:readSingleRegister	32	static
+../Core/Src/ads1115.c:162:6:resetDevice	16	static
+../Core/Src/ads1115.c:173:10:getRegisterValue	16	static
+../Core/Src/ads1115.c:181:17:combineBytes	16	static
