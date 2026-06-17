@@ -136,6 +136,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   adcStartup(); // 一开机，先初始化并复位 ADC
   HAL_TIM_Base_Start_IT(&htim3); // 启动 TIM3 (10ms 周期)
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -159,7 +161,9 @@ int main(void)
 		// 注意：如果上一次 DMA 发送还没结束，直接调用 Transmit_DMA 会返回 BUSY。
 		// 但在我们 10ms 的大周期下，115200 波特率发 10 字节仅需不到 1ms，绝对不会冲突。
 		HAL_UART_Transmit_DMA(&huart2, (uint8_t *)&tx_packet, sizeof(Packet_t));
+
 	}
+
 
     /* USER CODE END WHILE */
 
