@@ -5,7 +5,7 @@
 ../Core/Src/main.c:148:7:HAL_UART_RxCpltCallback	16	static
 ../Core/Src/main.c:244:6:Generate_MAC_From_UID	0	static
 ../Core/Src/main.c:266:9:Calc_Checksum	8	static
-../Core/Src/main.c:391:6:SystemClock_Config	80	static,ignoring_inline_asm
-../Core/Src/main.c:281:5:main	24	static
-../Core/Src/main.c:433:6:HAL_TIM_PeriodElapsedCallback	0	static
-../Core/Src/main.c:448:6:Error_Handler	0	static,ignoring_inline_asm
+../Core/Src/main.c:453:6:SystemClock_Config	80	static,ignoring_inline_asm
+../Core/Src/main.c:281:5:main	32	static
+../Core/Src/main.c:495:6:HAL_TIM_PeriodElapsedCallback	0	static
+../Core/Src/main.c:510:6:Error_Handler	0	static,ignoring_inline_asm

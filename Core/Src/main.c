@@ -341,6 +341,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	// 定义状态机用的计时器变量
+	 uint16_t led_timer = 0;
+	 uint16_t btn_press_timer = 0;
   while (1)
   {
 	  if (adc_ready_flag == 1)
@@ -356,11 +359,6 @@ int main(void)
 		// 也可以用 offsetof(Packet_t, checksum) 代替硬编码的 8
 		tx_packet.checksum = Calc_Checksum((uint8_t *)&tx_packet, 8);
 
-		// 3. 通过 DMA 发送这 10 个字节
-		// 注意：如果上一次 DMA 发送还没结束，直接调用 Transmit_DMA 会返回 BUSY。
-		// 但在我们 10ms 的大周期下，115200 波特率发 10 字节仅需不到 1ms，绝对不会冲突。
-		//	HAL_UART_Transmit_DMA(&huart2, (uint8_t *)&tx_packet, sizeof(Packet_t));
-
 		// 3. UDP 网络发送逻辑 (自带断线重连保护)
 	  // 读取 Socket 0 的状态寄存器，确保它当前处于 UDP 正常工作模式
 		  if (Read_W5500_1Byte(Sn_SR) != SOCK_UDP)
@@ -373,6 +371,70 @@ int main(void)
 			  // 状态正常，直接将 10 字节的结构体数据通过 UDP 发送给上位机
 			  Write_SOCK_Data_Buffer(0, (uint8_t *)&tx_packet, sizeof(Packet_t));
 		  }
+
+		  //  指示灯心跳逻辑 (利用 10ms 周期计数)
+		  led_timer++;
+		  if (led_timer >= 50) // 50 * 10ms = 500ms (半秒闪烁一次)
+		  {
+			led_timer = 0;
+			// 1. 系统心跳：翻转运行指示灯 (如绿灯)
+			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin); // 翻转 LED 状态
+
+			// 2. 网络诊断：读取 W5500 物理层连接状态 (LINK 位)
+		  // PHYCFGR 寄存器的最低位 (bit 0) 是物理连接标志：1 为已连接，0 为断开
+		  uint8_t phy_status = Read_W5500_1Byte(PHYCFGR);
+
+		  if ((phy_status & LINK) == 0)
+		  {
+			  // 异常情况 A：网线被拔出或交换机断电
+			  // 点亮异常指示灯 (红灯常亮)
+			  HAL_GPIO_WritePin(LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_RESET);
+		  }
+		  else
+		  {
+			  // 网线物理连接正常，进一步检查 Socket 状态
+			  if (Read_W5500_1Byte(Sn_SR) != SOCK_UDP)
+			  {
+				  // 异常情况 B：网线插着，但协议栈死机或未处于 UDP 模式
+				  HAL_GPIO_WritePin(LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_RESET);
+			  }
+			  else
+			  {
+				  // 一切正常：熄灭异常指示灯
+				  HAL_GPIO_WritePin(LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_SET);
+			  }
+		  }
+		  }
+
+		  // 物理按键“长按 3 秒恢复出厂设置”逻辑
+
+		  // 检测按键是否按下 (假设按下是低电平 RESET)
+			if (HAL_GPIO_ReadPin(KEY_GPIO_Port, KEY_Pin) == GPIO_PIN_RESET)
+			{
+				btn_press_timer++; // 只要按住，每 10ms 加 1
+
+				if (btn_press_timer >= 300) // 300 * 10ms = 3000ms = 3秒
+				{
+					// 1. 破坏 Flash 里的标志位，强制恢复默认参数
+					DeviceConfig.head = 0xFFFF;
+					Config_Save();
+
+					// 2. 用 LED 快速闪烁 10 次，给用户“重置成功”的视觉反馈
+					for(int i = 0; i < 20; i++)
+					{
+						HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+						HAL_Delay(50);
+					}
+
+					// 3. 立即重启单片机
+					NVIC_SystemReset();
+				}
+			}
+			else
+			{
+				// 如果中途松手了，计时器立刻清零，防止累加误触发
+				btn_press_timer = 0;
+			}
 
 	}
 

@@ -69,8 +69,8 @@ uint8_t Calc_Checksum(uint8_t *data, uint16_t len);
 #define W5500_RST_GPIO_Port GPIOB
 #define LED_R_Pin GPIO_PIN_11
 #define LED_R_GPIO_Port GPIOA
-#define LED_G_Pin GPIO_PIN_12
-#define LED_G_GPIO_Port GPIOA
+#define LED_Pin GPIO_PIN_12
+#define LED_GPIO_Port GPIOA
 #define KEY_Pin GPIO_PIN_3
 #define KEY_GPIO_Port GPIOB
 

@@ -49,16 +49,16 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, RS485_EN_Pin|LED_R_Pin|LED_G_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(RS485_EN_GPIO_Port, RS485_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(W5500_CS_GPIO_Port, W5500_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, W5500_CS_Pin|LED_R_Pin|LED_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(W5500_RST_GPIO_Port, W5500_RST_Pin, GPIO_PIN_SET);
 
-  /*Configure GPIO pins : RS485_EN_Pin W5500_CS_Pin LED_R_Pin LED_G_Pin */
-  GPIO_InitStruct.Pin = RS485_EN_Pin|W5500_CS_Pin|LED_R_Pin|LED_G_Pin;
+  /*Configure GPIO pins : RS485_EN_Pin W5500_CS_Pin LED_R_Pin LED_Pin */
+  GPIO_InitStruct.Pin = RS485_EN_Pin|W5500_CS_Pin|LED_R_Pin|LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -74,7 +74,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin : KEY_Pin */
   GPIO_InitStruct.Pin = KEY_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(KEY_GPIO_Port, &GPIO_InitStruct);
 
 }
