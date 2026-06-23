@@ -35,6 +35,7 @@ Core/Src/stm32g0xx_it.o: ../Core/Src/stm32g0xx_it.c ../Core/Inc/main.h \
  ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart.h \
  ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart_ex.h \
  ../Core/Inc/hal.h ../Core/Inc/main.h ../Core/Inc/ads1115.h \
+ ../Core/Inc/bsp_w5500.h ../Core/Inc/flash_config.h \
  ../Core/Inc/stm32g0xx_it.h
 ../Core/Inc/main.h:
 ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal.h:
@@ -75,4 +76,6 @@ Core/Src/stm32g0xx_it.o: ../Core/Src/stm32g0xx_it.c ../Core/Inc/main.h \
 ../Core/Inc/hal.h:
 ../Core/Inc/main.h:
 ../Core/Inc/ads1115.h:
+../Core/Inc/bsp_w5500.h:
+../Core/Inc/flash_config.h:
 ../Core/Inc/stm32g0xx_it.h:

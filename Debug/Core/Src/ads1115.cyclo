@@ -1,8 +1,7 @@
-../Core/Src/ads1115.c:29:6:adcStartup	1
 ../Core/Src/ads1115.c:49:9:readChannelData	5
-../Core/Src/ads1115.c:104:6:writeSingleRegister	5
+../Core/Src/ads1115.c:104:6:writeSingleRegister	4
 ../Core/Src/ads1115.c:129:6:writeSingleRegisterNoRead	3
 ../Core/Src/ads1115.c:146:10:readSingleRegister	2
 ../Core/Src/ads1115.c:162:6:resetDevice	2
+../Core/Src/ads1115.c:29:6:adcStartup	1
 ../Core/Src/ads1115.c:173:10:getRegisterValue	1
-../Core/Src/ads1115.c:181:17:combineBytes	1

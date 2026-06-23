@@ -32,6 +32,10 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "hal.h"
+#include "bsp_w5500.h"
+#include "flash_config.h"
+#include <stdio.h> // 用于 sscanf
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -59,10 +63,10 @@ uint8_t Calc_Checksum(uint8_t *data, uint16_t len);
 /* Private defines -----------------------------------------------------------*/
 #define RS485_EN_Pin GPIO_PIN_4
 #define RS485_EN_GPIO_Port GPIOA
-#define SPI_CS_Pin GPIO_PIN_5
-#define SPI_CS_GPIO_Port GPIOA
-#define RST_Pin GPIO_PIN_0
-#define RST_GPIO_Port GPIOB
+#define W5500_CS_Pin GPIO_PIN_5
+#define W5500_CS_GPIO_Port GPIOA
+#define W5500_RST_Pin GPIO_PIN_0
+#define W5500_RST_GPIO_Port GPIOB
 #define LED_R_Pin GPIO_PIN_11
 #define LED_R_GPIO_Port GPIOA
 #define LED_G_Pin GPIO_PIN_12
@@ -71,7 +75,7 @@ uint8_t Calc_Checksum(uint8_t *data, uint16_t len);
 #define KEY_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+void Generate_MAC_From_UID(void);
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

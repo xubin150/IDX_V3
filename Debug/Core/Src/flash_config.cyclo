@@ -1,0 +1,2 @@
+../Core/Src/flash_config.c:45:6:Config_Save	2
+../Core/Src/flash_config.c:13:6:Config_Init	2

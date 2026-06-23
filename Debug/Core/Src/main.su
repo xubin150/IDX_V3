@@ -1,5 +1,11 @@
-../Core/Src/main.c:91:9:Calc_Checksum	24	static
-../Core/Src/main.c:106:5:main	8	static
-../Core/Src/main.c:179:6:SystemClock_Config	88	static
-../Core/Src/main.c:221:6:HAL_TIM_PeriodElapsedCallback	16	static
-../Core/Src/main.c:234:6:Error_Handler	8	static,ignoring_inline_asm
+../Drivers/CMSIS/Include/core_cm0plus.h:985:34:__NVIC_SystemReset	0	static,ignoring_inline_asm
+../Core/Src/main.c:94:6:Uart_Send_String	8	static
+../Core/Src/main.c:101:6:Print_Current_Config	288	static
+../Core/Src/main.c:181:7:Process_Uart_Command	48	static
+../Core/Src/main.c:148:7:HAL_UART_RxCpltCallback	16	static
+../Core/Src/main.c:244:6:Generate_MAC_From_UID	0	static
+../Core/Src/main.c:266:9:Calc_Checksum	8	static
+../Core/Src/main.c:391:6:SystemClock_Config	80	static,ignoring_inline_asm
+../Core/Src/main.c:281:5:main	24	static
+../Core/Src/main.c:433:6:HAL_TIM_PeriodElapsedCallback	0	static
+../Core/Src/main.c:448:6:Error_Handler	0	static,ignoring_inline_asm

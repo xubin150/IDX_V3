@@ -1,0 +1,15 @@
+../Core/Src/bsp_w5500.c:26:15:W5500_SPI_ReadWriteByte	32	static
+../Core/Src/bsp_w5500.c:37:6:W5500_SPI_Send_Short	8	static
+../Core/Src/bsp_w5500.c:63:6:Write_W5500_1Byte	16	static
+../Core/Src/bsp_w5500.c:75:6:Write_W5500_2Byte	16	static
+../Core/Src/bsp_w5500.c:87:6:Write_W5500_nByte	16	static
+../Core/Src/bsp_w5500.c:103:6:Write_W5500_SOCK_1Byte	24	static
+../Core/Src/bsp_w5500.c:115:6:Write_W5500_SOCK_2Byte	24	static
+../Core/Src/bsp_w5500.c:127:6:Write_W5500_SOCK_4Byte	24	static
+../Core/Src/bsp_w5500.c:142:15:Read_W5500_1Byte	16	static
+../Core/Src/bsp_w5500.c:46:6:W5500_Hardware_Reset	8	static
+../Core/Src/bsp_w5500.c:156:16:Read_W5500_SOCK_2Byte	16	static
+../Core/Src/bsp_w5500.c:172:6:W5500_Init	16	static
+../Core/Src/bsp_w5500.c:202:6:Socket_Init	8	static
+../Core/Src/bsp_w5500.c:217:15:Socket_UDP	8	static
+../Core/Src/bsp_w5500.c:238:6:Write_SOCK_Data_Buffer	40	static
