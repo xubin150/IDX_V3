@@ -382,6 +382,14 @@ int main(void)
 	  uint8_t socket_state = Read_W5500_SOCK_1Byte(0, Sn_SR);
 	  static uint8_t connect_issued = 0;
 
+	  // 【新增补丁】专门清理“拨号超时”的幽灵标志，防止 W5500 死锁不重连
+		if (Read_W5500_SOCK_1Byte(0, Sn_IR) & IR_TIMEOUT)
+		{
+			Write_W5500_SOCK_1Byte(0, Sn_IR, IR_TIMEOUT); // 写入 1 清除标志
+			Write_W5500_SOCK_1Byte(0, Sn_CR, CLOSE);      // 强制关闭，让状态机干干净净地从 CLOSED 重来
+			connect_issued = 0;                           // 解锁重拨
+		}
+
 	  switch (socket_state)
 	  {
 		  case SOCK_CLOSED: // 状态 0x00：端口关闭状态
