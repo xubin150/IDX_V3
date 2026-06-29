@@ -491,34 +491,45 @@ int main(void)
 				// 如果中途松手了，计时器立刻清零，防止累加误触发
 				btn_press_timer = 0;
 			}
+			// ... (前面的 ADC读取、TCP状态机、LED诊断、按键逻辑 保持不变) ...
+
+			// ==========================================
+			// 4. TCP 接收与指令解析逻辑 (10ms 周期查询)
+			// ==========================================
+			/* 1. 获取当前 Socket 0 接收缓冲区内有多少字节数据 */
+			uint16_t rx_size = Read_W5500_SOCK_2Byte(0, Sn_RX_RSR);
+
+			if (rx_size > 0)
+			{
+				// 防溢出保护：留下最后一个字节强制作为字符串结束符
+				if (rx_size >= sizeof(Rx_Buffer))
+				{
+					rx_size = sizeof(Rx_Buffer) - 1;
+				}
+
+				// 【核心修复】每次接收前，彻底清零缓冲区，消灭历史残留幽灵数据
+				memset(Rx_Buffer, 0, sizeof(Rx_Buffer));
+
+				/* 2. 读取数据 */
+				Read_SOCK_Data_Buffer(0, Rx_Buffer);
+
+				/* 3. 处理数据 */
+				if (strncmp((char *)Rx_Buffer, "START", 5) == 0)
+				{
+					send_enabled = 1; // 允许发送
+				}
+				else if (strncmp((char *)Rx_Buffer, "STOP", 4) == 0)
+				{
+					send_enabled = 0; // 暂停发送
+				}
+			}
+
+
+			    /* USER CODE END WHILE */
 
 	}
 
-	  /* 1. 获取当前 Socket 0 接收缓冲区内有多少字节数据 */
-	  // 对应 W5500 寄存器 Sn_RX_RSR (Socket RX Received Size Register)
-	  uint16_t rx_size = Read_W5500_SOCK_2Byte(0, Sn_RX_RSR);
 
-	  if (rx_size > 0)
-	  {
-	      /* 2. 读取数据 */
-	      // 注意：你的 Read_SOCK_Data_Buffer 函数定义中不需要 size 参数，
-	      // 它通常会自动根据 Sn_RX_RSR 读取缓冲区中的实际长度。
-	      Read_SOCK_Data_Buffer(0, Rx_Buffer);
-
-	      // 3. 处理数据 (需注意 Rx_Buffer 中现在有多少有效字节)
-	      // 如果你的驱动读取函数内部会更新缓冲区，你需要确认 Rx_Buffer 填入了多少数据
-	      // 如果你的驱动里 Read_SOCK_Data_Buffer 没有返回长度，
-	      // 你可能需要确保 Rx_Buffer 的处理逻辑与你的驱动匹配。
-
-	      if (strncmp((char *)Rx_Buffer, "START", 5) == 0)
-	      {
-	          send_enabled = 1;
-	      }
-	      else if (strncmp((char *)Rx_Buffer, "STOP", 4) == 0)
-	      {
-	          send_enabled = 0;
-	      }
-	  }
 
     /* USER CODE END WHILE */
 

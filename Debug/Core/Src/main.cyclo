@@ -5,7 +5,7 @@
 ../Core/Src/main.c:150:7:HAL_UART_RxCpltCallback	6
 ../Core/Src/main.c:246:6:Generate_MAC_From_UID	1
 ../Core/Src/main.c:268:9:Calc_Checksum	2
-../Core/Src/main.c:534:6:SystemClock_Config	3
+../Core/Src/main.c:545:6:SystemClock_Config	3
 ../Core/Src/main.c:283:5:main	18
-../Core/Src/main.c:576:6:HAL_TIM_PeriodElapsedCallback	2
-../Core/Src/main.c:591:6:Error_Handler	1
+../Core/Src/main.c:587:6:HAL_TIM_PeriodElapsedCallback	2
+../Core/Src/main.c:602:6:Error_Handler	1
