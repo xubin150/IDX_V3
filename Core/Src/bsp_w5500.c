@@ -81,6 +81,21 @@ void Write_W5500_2Byte(unsigned short reg, unsigned short dat)
     W5500_CS_HIGH();
 }
 
+
+/**
+  * @brief  读取指定Socket寄存器的1字节数据 (修复状态机读取的核心函数)
+  */
+unsigned char Read_W5500_SOCK_1Byte(SOCKET s, unsigned short reg)
+{
+    unsigned char i;
+    W5500_CS_LOW();
+    W5500_SPI_Send_Short(reg);
+    // (s * 0x20 + 0x08) 动态定位到对应 Socket 的寄存器块
+    W5500_SPI_ReadWriteByte(FDM1 | RWB_READ | (s * 0x20 + 0x08));
+    i = W5500_SPI_ReadWriteByte(0x00);
+    W5500_CS_HIGH();
+    return i;
+}
 /**
   * @brief  向W5500的通用寄存器写连续N字节数据
   */
@@ -230,7 +245,7 @@ unsigned char Socket_UDP(SOCKET s)
 }
 
 /**
-  * @brief  将待发送数据写入W5500 TX缓存并触发UDP发送
+  * @brief  将待发送数据写入W5500 TX缓存并触发UDP发送/TCP发送
   * @param  s: 端口号 (0~7)
   * @param  dat_ptr: 数据指针
   * @param  size: 数据长度
@@ -240,9 +255,9 @@ void Write_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, unsigned short siz
     unsigned short offset, offset1;
     unsigned short i;
 
-    // 配置UDP目标主机的IP和端口
-    Write_W5500_SOCK_4Byte(s, Sn_DIPR, S0_DIP);
-    Write_W5500_SOCK_2Byte(s, Sn_DPORTR, S0_DPort[0]*256 + S0_DPort[1]);
+    // 配置UDP目标主机的IP和端口(使用UDP要开启下面两行、使用TCP就要注释掉)
+   // Write_W5500_SOCK_4Byte(s, Sn_DIPR, S0_DIP);
+    //Write_W5500_SOCK_2Byte(s, Sn_DPORTR, S0_DPort[0]*256 + S0_DPort[1]);
 
     // 读取TX写指针
     offset = Read_W5500_SOCK_2Byte(s, Sn_TX_WR);
@@ -276,4 +291,47 @@ void Write_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, unsigned short siz
     offset1 += size;
     Write_W5500_SOCK_2Byte(s, Sn_TX_WR, offset1);
     Write_W5500_SOCK_1Byte(s, Sn_CR, SEND); // 触发硬件发送
+}
+
+unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr)
+{
+    unsigned short rx_size;
+    unsigned short offset, offset1;
+    unsigned short i;
+
+    rx_size = Read_W5500_SOCK_2Byte(s, Sn_RX_RSR);
+    if(rx_size == 0) return 0;
+    if(rx_size > 1460) rx_size = 1460;
+
+    offset = Read_W5500_SOCK_2Byte(s, Sn_RX_RD);
+    offset1 = offset;
+    offset &= (S_RX_SIZE - 1);
+
+    W5500_CS_LOW(); // 使用你工程里的宏
+
+    W5500_SPI_Send_Short(offset);
+    W5500_SPI_ReadWriteByte(VDM | RWB_READ | (s * 0x20 + 0x18));
+
+    if((offset + rx_size) < S_RX_SIZE)
+    {
+        for(i = 0; i < rx_size; i++) {
+            *dat_ptr++ = W5500_SPI_ReadWriteByte(0x00);
+        }
+    }
+    else
+    {
+        offset = S_RX_SIZE - offset;
+        for(i = 0; i < offset; i++) { *dat_ptr++ = W5500_SPI_ReadWriteByte(0x00); }
+        W5500_CS_HIGH();
+        W5500_CS_LOW();
+        W5500_SPI_Send_Short(0x00);
+        W5500_SPI_ReadWriteByte(VDM | RWB_READ | (s * 0x20 + 0x18));
+        for(; i < rx_size; i++) { *dat_ptr++ = W5500_SPI_ReadWriteByte(0x00); }
+    }
+    W5500_CS_HIGH();
+
+    offset1 += rx_size;
+    Write_W5500_SOCK_2Byte(s, Sn_RX_RD, offset1);
+    Write_W5500_SOCK_1Byte(s, Sn_CR, RECV);
+    return rx_size;
 }

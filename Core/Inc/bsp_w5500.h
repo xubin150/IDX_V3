@@ -200,6 +200,13 @@ unsigned char Socket_UDP(SOCKET s);
 unsigned char Read_W5500_1Byte(unsigned short reg);
 void Write_W5500_1Byte(unsigned short reg, unsigned char dat);
 
+// ... 在头文件其他函数声明的下方加入：
+unsigned short Read_W5500_SOCK_2Byte(SOCKET s, unsigned short reg);
+void Write_W5500_SOCK_1Byte(SOCKET s, unsigned short reg, unsigned char dat);
+void Write_W5500_SOCK_2Byte(SOCKET s, unsigned short reg, unsigned short dat);
+void Write_W5500_SOCK_4Byte(SOCKET s, unsigned short reg, unsigned char *dat_ptr);
+unsigned char Read_W5500_SOCK_1Byte(SOCKET s, unsigned short reg);
+
 unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr);
 void Write_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, unsigned short size);
 

@@ -50,6 +50,8 @@ extern unsigned char Phy_Addr[6];
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+	volatile uint8_t send_enabled = 0; // 0: 暂停发送, 1: 允许发送
+	unsigned char Rx_Buffer[512];
 	uint8_t uart_rx_buf[64];
 	uint8_t rx_idx = 0;
 	uint8_t rx_byte;
@@ -331,7 +333,7 @@ int main(void)
    W5500_Hardware_Reset(); // 硬件复位 W5500
    W5500_Init();           // 初始化 MAC、IP、网关等基础参数
    Socket_Init(0);         // 初始化 Socket 0
-   Socket_UDP(0);          // 将 Socket 0 配置为 UDP 模式并打开监听
+  // Socket_UDP(0);          // 将 Socket 0 配置为 UDP 模式并打开监听
    // 6. 启动 ADC 采样与定时器
    adcStartup(); // 一开机，先初始化并复位 ADC
    HAL_TIM_Base_Start_IT(&htim3); // 启动 TIM3 (10ms 周期)
@@ -361,7 +363,7 @@ int main(void)
 
 		// 3. UDP 网络发送逻辑 (自带断线重连保护)
 	  // 读取 Socket 0 的状态寄存器，确保它当前处于 UDP 正常工作模式
-		  if (Read_W5500_1Byte(Sn_SR) != SOCK_UDP)
+		/*  if (Read_W5500_1Byte(Sn_SR) != SOCK_UDP)
 		  {
 			  // 如果网线被拔掉后重新插上，或者模块发生异常状态，重新打开 UDP 模式
 			  Socket_UDP(0);
@@ -370,42 +372,96 @@ int main(void)
 		  {
 			  // 状态正常，直接将 10 字节的结构体数据通过 UDP 发送给上位机
 			  Write_SOCK_Data_Buffer(0, (uint8_t *)&tx_packet, sizeof(Packet_t));
-		  }
+		  }*/
+		// ==========================================
+		// ==========================================
+		// ==========================================
+	  // 3. 完美修复版的 TCP Client 硬件状态机
+	  // ==========================================
+	  // 【核心修正】使用专用的 Socket 读取函数！
+	  uint8_t socket_state = Read_W5500_SOCK_1Byte(0, Sn_SR);
+	  static uint8_t connect_issued = 0;
 
-		  //  指示灯心跳逻辑 (利用 10ms 周期计数)
-		  led_timer++;
-		  if (led_timer >= 50) // 50 * 10ms = 500ms (半秒闪烁一次)
-		  {
-			led_timer = 0;
-			// 1. 系统心跳：翻转运行指示灯 (如绿灯)
-			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin); // 翻转 LED 状态
+	  switch (socket_state)
+	  {
+		  case SOCK_CLOSED: // 状态 0x00：端口关闭状态
+			  connect_issued = 0; // 复位连接锁
+			  // 配置目标服务器 IP 和端口 (直接使用你驱动里已有的 4Byte 和 2Byte 函数)
+			  Write_W5500_SOCK_4Byte(0, Sn_DIPR, S0_DIP);
+			  Write_W5500_SOCK_2Byte(0, Sn_DPORTR, S0_DPort[0]*256 + S0_DPort[1]);
 
-			// 2. 网络诊断：读取 W5500 物理层连接状态 (LINK 位)
-		  // PHYCFGR 寄存器的最低位 (bit 0) 是物理连接标志：1 为已连接，0 为断开
+			  // 打开 Socket 0 并设为 TCP 模式
+			  Write_W5500_SOCK_1Byte(0, Sn_MR, MR_TCP);
+			  Write_W5500_SOCK_1Byte(0, Sn_CR, OPEN);
+			  break;
+
+		  case SOCK_INIT: // 状态 0x13：Socket 已打开，等待发起连接
+			  if (connect_issued == 0)
+			  {
+				  connect_issued = 1;
+				  Write_W5500_SOCK_1Byte(0, Sn_CR, CONNECT); // 下达连接指令
+			  }
+			  break;
+
+		  case SOCK_ESTABLISHED: // 状态 0x17：TCP 三次握手成功！
+			  // 【核心修正】读取中断寄存器也必须用 Socket 专属函数
+			  if (Read_W5500_SOCK_1Byte(0, Sn_IR) & IR_DISCON)
+			  {
+				  Write_W5500_SOCK_1Byte(0, Sn_IR, IR_DISCON);
+				  Write_W5500_SOCK_1Byte(0, Sn_CR, CLOSE);
+				  connect_issued = 0;
+			  }
+			  else
+			  {
+				  // 发送 10 字节的结构体数据
+				  // 只有开关开启时才执行发送
+				  if(send_enabled==1)
+					  Write_SOCK_Data_Buffer(0, (uint8_t *)&tx_packet, sizeof(Packet_t));
+			  }
+			  break;
+
+		  case SOCK_CLOSE_WAIT: // 状态 0x1C：半关闭状态
+			  Write_W5500_SOCK_1Byte(0, Sn_CR, DISCON);
+			  connect_issued = 0;
+			  break;
+
+		  default:
+			  break;
+	  }
+
+	  // ==========================================
+	  // 指示灯与网络诊断逻辑 (500ms执行一次)
+	  // ==========================================
+	  led_timer++;
+	  if (led_timer >= 50)
+	  {
+		  led_timer = 0;
+		  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin); // 绿灯心跳
+
+		  // 物理层诊断使用通用寄存器读取 (正确)
 		  uint8_t phy_status = Read_W5500_1Byte(PHYCFGR);
 
 		  if ((phy_status & LINK) == 0)
 		  {
-			  // 异常情况 A：网线被拔出或交换机断电
-			  // 点亮异常指示灯 (红灯常亮)
+			  // 网线断开：亮红灯
 			  HAL_GPIO_WritePin(LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_RESET);
 		  }
 		  else
 		  {
-			  // 网线物理连接正常，进一步检查 Socket 状态
-			  if (Read_W5500_1Byte(Sn_SR) != SOCK_UDP)
+			  // 网线正常，进一步检查 TCP Socket 状态
+			  // 【核心修正】必须使用 Socket 专属读取函数
+			  if (Read_W5500_SOCK_1Byte(0, Sn_SR) != SOCK_ESTABLISHED)
 			  {
-				  // 异常情况 B：网线插着，但协议栈死机或未处于 UDP 模式
+				  // TCP 未连接成功 (如服务端未开启)：亮红灯
 				  HAL_GPIO_WritePin(LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_RESET);
 			  }
 			  else
 			  {
-				  // 一切正常：熄灭异常指示灯
+				  // TCP 连接成功，一切正常：灭红灯
 				  HAL_GPIO_WritePin(LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_SET);
 			  }
 		  }
-		  }
-
+	  }
 		  // 物理按键“长按 3 秒恢复出厂设置”逻辑
 
 		  // 检测按键是否按下 (假设按下是低电平 RESET)
@@ -438,6 +494,31 @@ int main(void)
 
 	}
 
+	  /* 1. 获取当前 Socket 0 接收缓冲区内有多少字节数据 */
+	  // 对应 W5500 寄存器 Sn_RX_RSR (Socket RX Received Size Register)
+	  uint16_t rx_size = Read_W5500_SOCK_2Byte(0, Sn_RX_RSR);
+
+	  if (rx_size > 0)
+	  {
+	      /* 2. 读取数据 */
+	      // 注意：你的 Read_SOCK_Data_Buffer 函数定义中不需要 size 参数，
+	      // 它通常会自动根据 Sn_RX_RSR 读取缓冲区中的实际长度。
+	      Read_SOCK_Data_Buffer(0, Rx_Buffer);
+
+	      // 3. 处理数据 (需注意 Rx_Buffer 中现在有多少有效字节)
+	      // 如果你的驱动读取函数内部会更新缓冲区，你需要确认 Rx_Buffer 填入了多少数据
+	      // 如果你的驱动里 Read_SOCK_Data_Buffer 没有返回长度，
+	      // 你可能需要确保 Rx_Buffer 的处理逻辑与你的驱动匹配。
+
+	      if (strncmp((char *)Rx_Buffer, "START", 5) == 0)
+	      {
+	          send_enabled = 1;
+	      }
+	      else if (strncmp((char *)Rx_Buffer, "STOP", 4) == 0)
+	      {
+	          send_enabled = 0;
+	      }
+	  }
 
     /* USER CODE END WHILE */
 
