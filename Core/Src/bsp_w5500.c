@@ -54,7 +54,7 @@ void W5500_Hardware_Reset(void)
 
     // 等待W5500物理层完成初始化(网线连接正常)
     // 如果不希望没插网线时死机，可以去掉这个死循环或加超时判断
-    while((Read_W5500_1Byte(PHYCFGR) & LINK) == 0);
+//    while((Read_W5500_1Byte(PHYCFGR) & LINK) == 0);
 }
 
 /**

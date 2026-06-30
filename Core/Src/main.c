@@ -390,52 +390,61 @@ int main(void)
 			connect_issued = 0;                           // 解锁重拨
 		}
 
-	  switch (socket_state)
-	  {
-		  case SOCK_CLOSED: // 状态 0x00：端口关闭状态
-			  connect_issued = 0; // 复位连接锁
-			  // 配置目标服务器 IP 和端口 (直接使用你驱动里已有的 4Byte 和 2Byte 函数)
-			  Write_W5500_SOCK_4Byte(0, Sn_DIPR, S0_DIP);
-			  Write_W5500_SOCK_2Byte(0, Sn_DPORTR, S0_DPort[0]*256 + S0_DPort[1]);
 
-			  // 打开 Socket 0 并设为 TCP 模式
-			  Write_W5500_SOCK_1Byte(0, Sn_MR, MR_TCP);
-			  Write_W5500_SOCK_1Byte(0, Sn_CR, OPEN);
-			  break;
+	switch (socket_state)
+		  {
+			  case SOCK_CLOSED: // 状态 0x00：端口关闭状态
+				  connect_issued = 0; // 复位连接锁
 
-		  case SOCK_INIT: // 状态 0x13：Socket 已打开，等待发起连接
-			  if (connect_issued == 0)
-			  {
-				  connect_issued = 1;
-				  Write_W5500_SOCK_1Byte(0, Sn_CR, CONNECT); // 下达连接指令
-			  }
-			  break;
+				  // 【核心修复 1】动态分配本地端口，避开上位机的 TIME_WAIT 拦截
+				  static uint16_t dynamic_local_port = 5000; // 使用 static 保证每次循环递增
+				  dynamic_local_port++;
+				  if (dynamic_local_port > 60000) dynamic_local_port = 5000; // 限制端口范围
+				  Write_W5500_SOCK_2Byte(0, Sn_PORT, dynamic_local_port);
 
-		  case SOCK_ESTABLISHED: // 状态 0x17：TCP 三次握手成功！
-			  // 【核心修正】读取中断寄存器也必须用 Socket 专属函数
-			  if (Read_W5500_SOCK_1Byte(0, Sn_IR) & IR_DISCON)
-			  {
-				  Write_W5500_SOCK_1Byte(0, Sn_IR, IR_DISCON);
-				  Write_W5500_SOCK_1Byte(0, Sn_CR, CLOSE);
+				  // 【核心修复 2】在重新 OPEN 之前，强行清空该 Socket 的所有历史中断残骸
+				  Write_W5500_SOCK_1Byte(0, Sn_IR, 0xFF);
+
+				  // 配置目标服务器 IP 和端口
+				  Write_W5500_SOCK_4Byte(0, Sn_DIPR, S0_DIP);
+				  Write_W5500_SOCK_2Byte(0, Sn_DPORTR, S0_DPort[0]*256 + S0_DPort[1]);
+
+				  // 打开 Socket 0 并设为 TCP 模式
+				  Write_W5500_SOCK_1Byte(0, Sn_MR, MR_TCP);
+				  Write_W5500_SOCK_1Byte(0, Sn_CR, OPEN);
+				  break;
+
+			  case SOCK_INIT: // 状态 0x13：Socket 已打开，等待发起连接
+				  if (connect_issued == 0)
+				  {
+					  connect_issued = 1;
+					  Write_W5500_SOCK_1Byte(0, Sn_CR, CONNECT); // 下达连接指令
+				  }
+				  break;
+
+			  case SOCK_ESTABLISHED: // 状态 0x17：TCP 三次握手成功！
+				  if (Read_W5500_SOCK_1Byte(0, Sn_IR) & IR_DISCON)
+				  {
+					  Write_W5500_SOCK_1Byte(0, Sn_IR, IR_DISCON);
+					  Write_W5500_SOCK_1Byte(0, Sn_CR, CLOSE);
+					  connect_issued = 0;
+				  }
+				  else
+				  {
+					  // 发送 10 字节的结构体数据
+					  if(send_enabled == 1)
+						  Write_SOCK_Data_Buffer(0, (uint8_t *)&tx_packet, sizeof(Packet_t));
+				  }
+				  break;
+
+			  case SOCK_CLOSE_WAIT: // 状态 0x1C：半关闭状态
+				  Write_W5500_SOCK_1Byte(0, Sn_CR, DISCON);
 				  connect_issued = 0;
-			  }
-			  else
-			  {
-				  // 发送 10 字节的结构体数据
-				  // 只有开关开启时才执行发送
-				  if(send_enabled==1)
-					  Write_SOCK_Data_Buffer(0, (uint8_t *)&tx_packet, sizeof(Packet_t));
-			  }
-			  break;
+				  break;
 
-		  case SOCK_CLOSE_WAIT: // 状态 0x1C：半关闭状态
-			  Write_W5500_SOCK_1Byte(0, Sn_CR, DISCON);
-			  connect_issued = 0;
-			  break;
-
-		  default:
-			  break;
-	  }
+			  default:
+				  break;
+		  }
 
 	  // ==========================================
 	  // 指示灯与网络诊断逻辑 (500ms执行一次)
@@ -532,13 +541,7 @@ int main(void)
 				}
 			}
 
-
-			    /* USER CODE END WHILE */
-
 	}
-
-
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
