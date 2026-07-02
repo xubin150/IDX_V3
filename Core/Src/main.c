@@ -337,7 +337,11 @@ int main(void)
    // 6. 启动 ADC 采样与定时器
    adcStartup(); // 一开机，先初始化并复位 ADC
    HAL_TIM_Base_Start_IT(&htim3); // 启动 TIM3 (10ms 周期)
-
+   /*测试单片机MISO*/
+   /*uint8_t test_ip = Read_W5500_1Byte(SIPR);
+   char dbg_buf[32];
+   sprintf(dbg_buf, "Test Read IP[0] = %d\r\n", test_ip);
+   Uart_Send_String(dbg_buf);*/
 
   /* USER CODE END 2 */
 
