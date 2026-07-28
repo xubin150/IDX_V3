@@ -1,9 +1,9 @@
 ../Core/Src/hal.c:36:6:delay_ms	1
 ../Core/Src/hal.c:46:6:delay_us	2
-../Core/Src/hal.c:67:8:sendI2CData	2
-../Core/Src/hal.c:84:8:receiveI2CData	2
-../Core/Src/hal.c:101:8:sendI2CRegPointer	2
-../Core/Src/hal.c:118:8:receiveI2CDataNoWrite	3
+../Core/Src/hal.c:67:8:sendI2CData	1
+../Core/Src/hal.c:84:8:receiveI2CData	1
+../Core/Src/hal.c:101:8:sendI2CRegPointer	1
+../Core/Src/hal.c:118:8:receiveI2CDataNoWrite	2
 ../Core/Src/hal.c:144:6:InitADC	1
 ../Core/Src/hal.c:145:6:InitGPIO	1
 ../Core/Src/hal.c:146:6:InitI2C	1

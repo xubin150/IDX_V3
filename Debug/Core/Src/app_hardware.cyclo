@@ -1,0 +1,8 @@
+../Core/Src/app_hardware.c:53:6:Hardware_Set_TX_Freq	7
+../Core/Src/app_hardware.c:107:6:Hardware_Set_TX_PWM	3
+../Core/Src/app_hardware.c:118:6:Hardware_TX_Start	1
+../Core/Src/app_hardware.c:143:6:Hardware_Update_LED	7
+../Core/Src/app_hardware.c:195:6:Hardware_Set_PreGain	3
+../Core/Src/app_hardware.c:124:6:Hardware_Apply_Params	5
+../Core/Src/app_hardware.c:221:6:Storage_Save_Params	1
+../Core/Src/app_hardware.c:252:6:Storage_Init_And_Load	2

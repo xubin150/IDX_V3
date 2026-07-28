@@ -1,0 +1,5 @@
+../Core/Src/app_signal_process.c:66:16:Math_SinQ15	8	static
+../Core/Src/app_signal_process.c:104:6:SignalProcess_ClearFilterHistory	0	static
+../Core/Src/app_signal_process.c:110:6:SignalProcess_Filter	20	static
+../Core/Src/app_signal_process.c:139:6:SignalProcess_Rotate	16	static
+../Core/Src/app_signal_process.c:158:6:SignalProcess_HandleAutoZero	40	static

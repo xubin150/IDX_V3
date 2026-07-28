@@ -12,6 +12,8 @@
 // ============================================================================
 /* 内部寄存器映像数组，用于缓存在单片机内存中 */
 static uint16_t registerMap[4];
+// 保存当前的 PGA 设定，默认为 ±4.096V
+static ADS1115_PGA_e s_current_pga = ADS1115_PGA_4_096V;
 
 // ============================================================================
 // 内部辅助函数声明
@@ -22,6 +24,23 @@ static uint16_t combineBytes(uint8_t upperByte, uint8_t lowerByte);
 // 核心驱动功能函数
 // ============================================================================
 
+/**
+ * @brief  设置 ADC 的 PGA 量程
+ * @param  pga_mode: 参见 ADS1115_PGA_e 枚举
+ */
+void ADS1115_SetPGA(ADS1115_PGA_e pga_mode)
+{
+    if (pga_mode <= ADS1115_PGA_0_256V) {
+        s_current_pga = pga_mode;
+    }
+}
+/**
+ * @brief  获取当前 ADC 的 PGA 量程
+ */
+ADS1115_PGA_e ADS1115_GetPGA(void)
+{
+    return s_current_pga;
+}
 /**
  * @brief  ADS1115 启动初始化序列
  * @note   在使用此函数前，确保单片机的时钟和 I2C 外设已通过 CubeMX 初始化完成。
@@ -52,22 +71,24 @@ int16_t readChannelData(uint8_t channel)
     uint8_t regRXdata[2] = {0};
     uint16_t configValue = 0;
 
-    // 1. 组装配置寄存器的值
-    // OS(1): 开始单次转换
-    // PGA(001): ±4.096V 量程
-    // MODE(1): 单次转换模式
-    // DR(101): 修改为 250 SPS 采样率 (二进制 101)，大幅降低高频噪声！
-    // COMP(00011): 禁用比较器
+    // 1. 动态组装配置寄存器的值
+	// OS(Bit 15) = 1: 开始单次转换 (0x8000)
+	// MODE(Bit 8) = 1: 单次转换模式 (0x0100)
+	// DR(Bit 7:5) = 110: 475 SPS (0x00C0)
+	// COMP(Bit 4:0) = 00011: 禁用比较器 (0x0003)
+	// 基础固定配置: 0x8000 | 0x0100 | 0x00C0 | 0x0003 = 0x81C3
+    uint16_t base_config = 0x81C3;
+    // 注入 PGA (Bit 11:9)
+    base_config |= ((uint16_t)s_current_pga << 9);
     if (channel == 0)
     {
-    	// MUX(100) + PGA(±4.096V) + MODE(单次) + DR(475 SPS)
-    	// 二进制: 1 100 001 1  110 000 11 = 0xC3C3
-    	configValue = 0xC3C3;
+    	// AIN0 通道 (MUX = 100 -> Bit 14:12 = 0x4000)
+    	configValue = base_config | 0x4000;
     }
     else if (channel == 1)
     {
-    	// 二进制: 1 101 001 1  110 000 11 = 0xD3C3
-        configValue = 0xD3C3;
+    	// AIN1 通道 (MUX = 101 -> Bit 14:12 = 0x5000)
+    	configValue = base_config | 0x5000;
     }
     else
     {
@@ -96,6 +117,67 @@ int16_t readChannelData(uint8_t channel)
     }
 
     return 0;
+}
+/**
+ * @brief  [非阻塞] 启动 ADS1115 特定通道的转换
+ * @param  channel: 0 表示 AIN0, 1 表示 AIN1
+ * @note   发送完配置指令后立刻返回，绝生死等！
+ */
+void ADS1115_Start_Conversion(uint8_t channel)
+{
+    uint8_t regData[2];
+    uint16_t configValue = 0;
+
+    // 1. 动态组装配置寄存器的值
+    // OS(Bit 15) = 1: 开始单次转换
+    // MODE(Bit 8) = 1: 单次转换模式
+    // DR(Bit 7:5) = 110: 475 SPS
+    // COMP(Bit 4:0) = 00011: 禁用比较器
+    uint16_t base_config = 0x81C3;
+
+    // 注入 PGA (Bit 11:9)
+    base_config |= ((uint16_t)s_current_pga << 9);
+
+    if (channel == 0)
+    {
+        // AIN0 通道 (MUX = 100 -> Bit 14:12 = 0x4000)
+        configValue = base_config | 0x4000;
+    }
+    else if (channel == 1)
+    {
+        // AIN1 通道 (MUX = 101 -> Bit 14:12 = 0x5000)
+        configValue = base_config | 0x5000;
+    }
+    else
+    {
+        return; // 无效通道，直接退出
+    }
+
+    // 2. 写入配置寄存器，触发单次转换
+    regData[0] = (uint8_t)(configValue >> 8);
+    regData[1] = (uint8_t)(configValue & 0xFF);
+
+    // 发送 I2C 数据 (这里的 sendI2CData 只有十几个字节的通信，耗时约100微秒，不影响系统宏观实时性)
+    sendI2CData(CONFIG_ADDRESS, regData, 2);
+}
+
+/**
+ * @brief  [非阻塞] 读取 ADS1115 转换好的数据
+ * @retval 16位有符号电压值
+ * @note   调用此函数前，请确保距离上次 Start_Conversion 已过去至少 2.2 毫秒
+ */
+int16_t ADS1115_Read_Result(void)
+{
+    uint8_t regRXdata[2] = {0};
+
+    // 直接读取转换寄存器的数据
+    // receiveI2CDataNoWrite 不包含转换等待，直接去总线上拉取数据
+    if (receiveI2CDataNoWrite(CONVERSION_ADDRESS, regRXdata, 2, false) == 0)
+    {
+        return (int16_t)combineBytes(regRXdata[0], regRXdata[1]);
+    }
+
+    return 0; // 读取失败时的安全默认值
 }
 
 /**

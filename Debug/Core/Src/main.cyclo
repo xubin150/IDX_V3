@@ -1,5 +1,5 @@
-../Core/Src/main.c:91:9:Calc_Checksum	2
-../Core/Src/main.c:106:5:main	2
-../Core/Src/main.c:179:6:SystemClock_Config	3
-../Core/Src/main.c:221:6:HAL_TIM_PeriodElapsedCallback	2
-../Core/Src/main.c:234:6:Error_Handler	1
+../Core/Src/main.c:94:9:Calc_Checksum	2
+../Core/Src/main.c:250:6:SystemClock_Config	3
+../Core/Src/main.c:109:5:main	10
+../Core/Src/main.c:296:6:HAL_UART_RxCpltCallback	2
+../Core/Src/main.c:313:6:Error_Handler	1

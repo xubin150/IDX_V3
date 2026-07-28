@@ -32,6 +32,12 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "hal.h"
+
+#include "app_system.h"
+#include "app_signal_process.h"
+#include "app_hardware.h"   // 必须声明硬件控制函数
+#include "app_storage.h"    // 必须声明存储控制函数
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -57,18 +63,16 @@ uint8_t Calc_Checksum(uint8_t *data, uint16_t len);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define RS485_EN_Pin GPIO_PIN_4
-#define RS485_EN_GPIO_Port GPIOA
-#define SPI_CS_Pin GPIO_PIN_5
-#define SPI_CS_GPIO_Port GPIOA
-#define RST_Pin GPIO_PIN_0
-#define RST_GPIO_Port GPIOB
-#define LED_R_Pin GPIO_PIN_11
-#define LED_R_GPIO_Port GPIOA
+#define CON_X_Pin GPIO_PIN_0
+#define CON_X_GPIO_Port GPIOA
+#define CON_Y_Pin GPIO_PIN_1
+#define CON_Y_GPIO_Port GPIOA
+#define SDA_EE_Pin GPIO_PIN_11
+#define SDA_EE_GPIO_Port GPIOA
 #define LED_G_Pin GPIO_PIN_12
 #define LED_G_GPIO_Port GPIOA
-#define KEY_Pin GPIO_PIN_3
-#define KEY_GPIO_Port GPIOB
+#define SCL_EE_Pin GPIO_PIN_3
+#define SCL_EE_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

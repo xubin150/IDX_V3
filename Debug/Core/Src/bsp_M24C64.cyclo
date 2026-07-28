@@ -1,0 +1,2 @@
+../Core/Src/bsp_M24C64.c:10:6:M24C64_WriteByte	1
+../Core/Src/bsp_M24C64.c:30:9:M24C64_ReadByte	1

@@ -1,0 +1,3 @@
+../Core/Src/app_cmd_parser.c:43:6:CmdParser_ReceiveByte	9
+../Core/Src/app_cmd_parser.c:71:6:CmdParser_HasNewCmd	1
+../Core/Src/app_cmd_parser.c:79:6:CmdParser_Execute	16

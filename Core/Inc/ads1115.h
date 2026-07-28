@@ -30,11 +30,25 @@ extern const char *adcRegisterNames[];
 #define NUM_REGISTERS                           ((uint8_t) 4)
 #define MAX_REGISTER_ADDRESS                    ((uint8_t) 3)
 
+// PGA 增益档位枚举 (对应 Config 寄存器 Bit[11:9])
+typedef enum {
+    ADS1115_PGA_6_144V = 0x00, // 000: 量程 ±6.144V
+    ADS1115_PGA_4_096V = 0x01, // 001: 量程 ±4.096V (默认)
+    ADS1115_PGA_2_048V = 0x02, // 010: 量程 ±2.048V
+    ADS1115_PGA_1_024V = 0x03, // 011: 量程 ±1.024V
+    ADS1115_PGA_0_512V = 0x04, // 100: 量程 ±0.512V
+    ADS1115_PGA_0_256V = 0x05  // 101: 量程 ±0.256V
+} ADS1115_PGA_e;
+
+
 //**********************************************************************************
 //
 // 核心驱动应用层功能函数声明
 //
 //**********************************************************************************
+// === 新增的对外接口 ===
+void ADS1115_SetPGA(ADS1115_PGA_e pga_mode);
+ADS1115_PGA_e ADS1115_GetPGA(void);
 
 /** @brief 初始化并复位 ADC 芯片 */
 void adcStartup(void);
@@ -57,7 +71,8 @@ bool resetDevice(void);
 /** @brief 获取单片机本地缓存的最新寄存器映像值 */
 uint16_t getRegisterValue(uint8_t address);
 
-
+void ADS1115_Start_Conversion(uint8_t channel);
+int16_t ADS1115_Read_Result(void);
 //**********************************************************************************
 //
 // ADS1115 内部寄存器地址及配置宏定义 (Register Definitions)

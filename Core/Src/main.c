@@ -20,14 +20,13 @@
 #include "main.h"
 #include "dma.h"
 #include "i2c.h"
-#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "app_cmd_parser.h" // 引入指令解析器
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,6 +47,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+	uint8_t g_rx_byte = 0; // 定义单字节接收缓存
+
 // 强制 1 字节对齐，确保结构体在内存中紧凑排列，总共 10 字节
 	#pragma pack(1)
 	typedef struct {
@@ -68,9 +69,9 @@
 		.reserved = 0x0000,
 		.tail = 0x0D
 	};
-
-	// 定时器触发标志位
-	volatile uint8_t adc_ready_flag = 0;
+	//非阻塞状态机变量
+	static uint8_t adc_state = 0;
+	static uint32_t adc_timer_base = 0;
 
 /* USER CODE END PV */
 
@@ -82,6 +83,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+	SystemCtrl_t g_SysCtrl = {0}; // 真正分配内存并初始化为0
+
 /**
   * @brief  计算 8 位累加校验和
   * @param  data: 数据缓冲区的起始指针
@@ -130,41 +133,109 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_I2C1_Init();
-  MX_SPI1_Init();
   MX_USART2_UART_Init();
+  MX_TIM1_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+
+  // 开启第一次串口接收中断，指定接收到 g_rx_byte 中，长度为 1
+  HAL_UART_Receive_IT(&huart2, &g_rx_byte, 1);
+
+  // 1. 读取 EEPROM，恢复上次保存的参数 (信道、相位等)
+  #if ENABLE_MODULE_EEPROM
+  Storage_Init_And_Load(&g_SysCtrl);
+  #endif
+
+
+  // 2. 将系统参数打入硬件 (这句会调用 Hardware_Set_TX_Freq 进行首次发令枪点火)
+  Hardware_Apply_Params(&g_SysCtrl);
+
   adcStartup(); // 一开机，先初始化并复位 ADC
-  HAL_TIM_Base_Start_IT(&htim3); // 启动 TIM3 (10ms 周期)
+  //  记录时间状态机的零点
+    adc_timer_base = HAL_GetTick();
 
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-	  if (adc_ready_flag == 1)
-	{
-		adc_ready_flag = 0;
+    while (1)
+      {
+          // --- 获取当前时间差 ---
+          uint32_t current_time = HAL_GetTick();
+          uint32_t elapsed_time = current_time - adc_timer_base;
 
-		// 1. 读取双通道 ADC 数据 (耗时约 6ms)
-		tx_packet.data_i = readChannelData(0);
-		tx_packet.data_q = readChannelData(1);
+          // --- 任务1：10ms 实时严格时序采样流 (非阻塞状态机) ---
+          switch (adc_state) {
+              case 0: // T = 0ms: 触发 I 通道采集
+                  if (elapsed_time >= 10) {
+                	  // 改为绝对时基累加，消除时间漂移
+                	  adc_timer_base += 10;
 
-		// 2. 计算校验和
-		// 结构体总长 10 字节，我们计算前 8 个字节 (从 head1 到 reserved) 的累加和
-		// 也可以用 offsetof(Packet_t, checksum) 代替硬编码的 8
-		tx_packet.checksum = Calc_Checksum((uint8_t *)&tx_packet, 8);
+                      // 【注意】这里必须改为非阻塞的启动函数，不能死等！
+                      ADS1115_Start_Conversion(0); // 发送指令让 ADS1115 采通道0
+                      adc_state = 1;
+                  }
+                  break;
 
-		// 3. 通过 DMA 发送这 10 个字节
-		// 注意：如果上一次 DMA 发送还没结束，直接调用 Transmit_DMA 会返回 BUSY。
-		// 但在我们 10ms 的大周期下，115200 波特率发 10 字节仅需不到 1ms，绝对不会冲突。
-		HAL_UART_Transmit_DMA(&huart2, (uint8_t *)&tx_packet, sizeof(Packet_t));
+              case 1: // T = 3ms: 读 I 通道，并触发 Q 通道采集
+                  if (elapsed_time >= 3) {
+                      g_SysCtrl.raw_I = ADS1115_Read_Result(); // 此时一定转换完了，直接读
 
-	}
+                      ADS1115_Start_Conversion(1); // 立刻发指令采通道1
+                      adc_state = 2;
+                  }
+                  break;
 
+              case 2: // T = 6ms: 读 Q 通道，执行算法，并发送数据
+                  if (elapsed_time >= 6) {
+                      g_SysCtrl.raw_Q = ADS1115_Read_Result();
 
+                      // --- 开始流水线数据处理 ---
+                      #if ENABLE_MODULE_FILTER //滤波
+                      SignalProcess_Filter(&g_SysCtrl);
+                      #endif
+
+                      SignalProcess_HandleAutoZero(&g_SysCtrl);//归0
+
+                      #if ENABLE_MODULE_ROTATION //旋转坐标
+                      SignalProcess_Rotate(&g_SysCtrl);
+                      #endif
+
+                      // --- 打包发送 ---
+                      tx_packet.data_i = g_SysCtrl.processed_I;
+                      tx_packet.data_q = g_SysCtrl.processed_Q;
+                      tx_packet.checksum = Calc_Checksum((uint8_t *)&tx_packet, 8);
+                      // 增加 DMA 忙碌状态保护
+                      if (huart2.gState == HAL_UART_STATE_READY) {
+						HAL_UART_Transmit_DMA(&huart2, (uint8_t *)&tx_packet, sizeof(Packet_t));
+					}
+                   //   HAL_UART_Transmit_DMA(&huart2, (uint8_t *)&tx_packet, sizeof(Packet_t));
+
+                      // --- LED 状态指示 ---
+                      Hardware_Update_LED(&g_SysCtrl);
+
+                      adc_state = 0; // 状态归零，等待下一个 10ms 周期到来
+                  }
+                  break;
+          }
+
+          // --- 任务2：非实时指令解析 (后台任务，在 ADC 转换的空闲时间疯狂执行) ---
+          if (CmdParser_HasNewCmd()) {
+              CmdParser_Execute(&g_SysCtrl);
+          }
+
+          // --- 任务3：非实时掉电保存 (后台任务) ---
+          #if ENABLE_MODULE_EEPROM
+          if (g_SysCtrl.need_save_eeprom) {
+              Storage_Save_Params(&g_SysCtrl);
+              g_SysCtrl.need_save_eeprom = false;
+
+            // 2. 【核心修复】由于时间轴已经发生了巨大的断层，必须强制重置状态机
+			adc_timer_base = HAL_GetTick(); // 重新对齐零点
+			adc_state = 0;                  // 强制回到初始状态
+          }
+          #endif
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -218,11 +289,19 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+
+/**
+  * @brief  串口接收完成回调函数 (由 HAL 库的中断处理函数自动调用)
+  */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if (htim->Instance == TIM3)
-    {//10ms采样一次
-        adc_ready_flag = 1;
+    if (huart->Instance == USART2)
+    {
+        // 1. 将接收到的这个字节，喂给我们的状态机解析器
+        CmdParser_ReceiveByte(g_rx_byte);
+
+        // 2. 必须再次调用此函数，重新开启接收中断，否则以后再也收不到数据了
+        HAL_UART_Receive_IT(&huart2, &g_rx_byte, 1);
     }
 }
 /* USER CODE END 4 */
